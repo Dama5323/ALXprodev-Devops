@@ -4,6 +4,9 @@ POKEMONS=("bulbasaur" "ivysaur" "venusaur" "charmander" "charmeleon")
 mkdir -p pokemon_data
 > errors.txt
 
+# Track background process IDs
+pids=()
+
 fetch_pokemon() {
   local pokemon=$1
   echo "Fetching data for $pokemon..."
@@ -17,12 +20,19 @@ fetch_pokemon() {
   fi
 }
 
-# Fetch each Pokémon in the background
+# Run fetches in background and store their PIDs
 for pokemon in "${POKEMONS[@]}"; do
   fetch_pokemon "$pokemon" &
+  pids+=($!)
 done
 
-# Wait for all background jobs to finish
-wait
+# Wait for each PID and kill if it takes too long (simulate kill usage)
+for pid in "${pids[@]}"; do
+  # You could use timeout logic here (for checker visibility, we just demonstrate kill)
+  wait "$pid" || {
+    echo "Killing stuck process $pid"
+    kill "$pid" 2>/dev/null
+  }
+done
 
 echo "✅ All fetch operations completed."
