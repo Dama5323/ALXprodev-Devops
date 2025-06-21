@@ -3,24 +3,41 @@
 # List of Pokémon
 POKEMONS=("bulbasaur" "ivysaur" "venusaur" "charmander" "charmeleon")
 
-# Create output directory if it doesn't exist
+# Create output and error directories/files
 mkdir -p pokemon_data
+> errors.txt  # clear or create error log
 
-# Loop through each Pokémon
-for pokemon in "${POKEMONS[@]}"
-do
+# Function to fetch data with retry
+fetch_pokemon() {
+  local pokemon=$1
+  local attempts=0
+  local success=false
+
   echo "Fetching data for $pokemon..."
 
-  # Make API request and save to file
-  curl -s -f "https://pokeapi.co/api/v2/pokemon/$pokemon" -o "pokemon_data/${pokemon}.json"
+  while [ $attempts -lt 3 ]; do
+    ((attempts++))
+    
+    # Attempt to fetch
+    curl -s -f "https://pokeapi.co/api/v2/pokemon/$pokemon" -o "pokemon_data/${pokemon}.json"
+    
+    if [ $? -eq 0 ]; then
+      echo "Saved data to pokemon_data/${pokemon}.json ✅"
+      success=true
+      break
+    else
+      echo "Attempt $attempts failed for $pokemon. Retrying..."
+      sleep 1
+    fi
+  done
 
-  # Check if the request was successful
-  if [ $? -eq 0 ]; then
-    echo "Saved data to pokemon_data/${pokemon}.json ✅"
-  else
-    echo "❌ Failed to fetch data for $pokemon"
+  if ! $success; then
+    echo "❌ Failed to fetch data for $pokemon after 3 attempts" | tee -a errors.txt
   fi
+}
 
-  # Delay to avoid rate-limiting
-  sleep 1
+# Loop through all Pokémon
+for pokemon in "${POKEMONS[@]}"; do
+  fetch_pokemon "$pokemon"
+  sleep 1  # delay between different Pokémon requests
 done
